@@ -5,25 +5,23 @@ import com.example.shailavibes.R
 import com.example.shailavibes.ui.data.Song
 
 fun getSongsFromRaw(context: Context): List<Song> {
-    val songs = mutableListOf<Song>()
+    val rawFiles = mutableListOf<Song>()
+    try {
+        val resources = context.resources
+        val fields = R.raw::class.java.fields
 
-    // اسم القارئ (لأن الملفات ما فيهاش اسم القارئ)
-    val artist = "مشاري راشد العفاسي" // عدلي الاسم حسب القارئ اللي نزلتِ منه
+        for (field in fields) {
 
-    // قراءة جميع الملفات من المجلد raw
-    val fields = R.raw::class.java.fields
-    fields.forEach { field ->
-        val fileName = field.name // اسم الملف بدون الامتداد، مثل quran أو 001
-        val resourceId = context.resources.getIdentifier(fileName, "raw", context.packageName)
-
-        if (resourceId != 0) {
-            // استخدام اسم الملف كاسم السورة مباشرة
-            val surahName = fileName.replace("_", " ")
-
-            // إضافة السورة إلى القائمة
-            songs.add(Song(surahName, artist, resourceId))
+            val fileName = field.name
+            val song = Song(
+                title = fileName.replace("_", " ").capitalize(),
+                artist = "مستريح الدغاميني",
+                fileName = fileName
+            )
+            rawFiles.add(song)
         }
+    } catch (e: Exception) {
+        println("Error loading raw files: ${e.message}")
     }
-
-    return songs.sortedBy { it.title } // ترتيب السور حسب الاسم
+    return rawFiles.sortedBy { it.title }
 }

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -27,72 +28,85 @@ fun SongList(
     onSongClick: (Song) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // حالة لتتبع السور المفضلة
     val favoriteSongs = remember { mutableStateListOf<String>() }
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
     ) {
-        itemsIndexed(songs) { _, song ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF353d48))
-                    .padding(16.dp),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-            ) {
-                // زر "Add to Favorite" على اليسار
-                IconButton(
-                    onClick = {
-                        if (favoriteSongs.contains(song.title)) {
-                            favoriteSongs.remove(song.title)
-                        } else {
-                            favoriteSongs.add(song.title)
-                        }
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = "Add to Favorite",
-                        tint = if (favoriteSongs.contains(song.title)) Color(0xFFFFA500) else Color.Gray,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // اسم السورة واسم القارئ
-                Column(
+        if (songs.isEmpty()) {
+            item {
+                Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .clickable { onSongClick(song) }
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = song.title,
+                        text = "لا توجد نتائج",
                         color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = song.artist,
-                        color = Color.Gray,
-                        fontSize = 14.sp
+                        fontSize = 16.sp
                     )
                 }
-
-                // زر Play صغير على اليمين
-                IconButton(
-                    onClick = { onSongClick(song) }
+            }
+        } else {
+            itemsIndexed(songs) { _, song ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF353d48))
+                        .padding(16.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "Play",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    IconButton(
+                        onClick = {
+                            if (favoriteSongs.contains(song.title)) {
+                                favoriteSongs.remove(song.title)
+                            } else {
+                                favoriteSongs.add(song.title)
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Favorite,
+                            contentDescription = "Add to Favorite",
+                            tint = if (favoriteSongs.contains(song.title)) Color(0xFFFFA500) else Color.Gray,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onSongClick(song) }
+                    ) {
+                        Text(
+                            text = song.title,
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = song.artist,
+                            color = Color.Gray,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { onSongClick(song) }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Play",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
         }
