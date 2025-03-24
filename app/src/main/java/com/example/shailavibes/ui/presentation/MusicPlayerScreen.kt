@@ -64,13 +64,15 @@ fun MusicPlayerScreen() {
     val scope = rememberCoroutineScope()
     var showMessage by remember { mutableStateOf<String?>(null) }
     var isRepeatModeOn by remember { mutableStateOf(false) }
-
+    var isShuffleModeOn by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
-
     var showFavoritesOnly by remember { mutableStateOf(false) }
+    var favoritesUpdateTrigger by remember { mutableStateOf(0) } // متغير جديد لإجبار تحديث filteredSongs
 
     val filteredSongs by derivedStateOf {
+        // استخدام favoritesUpdateTrigger عشان نجبر الـ derivedStateOf على إعادة الحساب
+        favoritesUpdateTrigger
         if (showFavoritesOnly) {
             songs.filter { it.isFavorite }
         } else if (searchQuery.isEmpty()) {
@@ -83,46 +85,12 @@ fun MusicPlayerScreen() {
         }
     }
 
-    // متابعة تغييرات الـ filteredSongs لتحديث currentSongIndex و selectedSong
-    LaunchedEffect(filteredSongs) {
-        if (selectedSong != null) {
-            // ابحث عن الأغنية الحالية في الـ filteredSongs الجديدة
-            val newIndex = filteredSongs.indexOfFirst { it == selectedSong }
-            if (newIndex != -1) {
-                // لو الأغنية لسه موجودة في الـ filteredSongs، حدث الـ currentSongIndex
-                currentSongIndex = newIndex
-            } else {
-                // لو الأغنية مش موجودة (مثلًا لأنها اتشالت من المفضلة وإحنا في وضع المفضلة)، وقف التشغيل
-                exoPlayer.pause()
-                selectedSong = null
-                currentSongIndex = -1
-            }
-        }
-    }
-
     // دالة لحفظ الأغاني المفضلة في SharedPreferences
     fun saveFavorites() {
         val favoriteIds = songs.filter { it.isFavorite }.map { it.resourceId.toString() }.toSet()
         sharedPreferences.edit().putStringSet("favorite_songs", favoriteIds).apply()
-    }
-
-    // Drawer State
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-
-    // ربط isRepeatModeOn بالـ ExoPlayer
-    LaunchedEffect(isRepeatModeOn) {
-        exoPlayer.repeatMode = if (isRepeatModeOn) {
-            Player.REPEAT_MODE_ONE
-        } else {
-            Player.REPEAT_MODE_OFF
-        }
-    }
-
-    DisposableEffect(exoPlayer) {
-        onDispose {
-            exoPlayer.stop()
-            exoPlayer.release()
-        }
+        // تغيير قيمة favoritesUpdateTrigger عشان يجبر الـ filteredSongs على التحديث
+        favoritesUpdateTrigger++
     }
 
     fun playNextSong() {
@@ -165,9 +133,9 @@ fun MusicPlayerScreen() {
 
     fun shuffleSongs() {
         if (filteredSongs.isNotEmpty()) {
-            val shuffledSongs = filteredSongs.shuffled()
-            currentSongIndex = 0
-            selectedSong = shuffledSongs[currentSongIndex]
+            val shuffledIndices = filteredSongs.indices.shuffled()
+            currentSongIndex = shuffledIndices[0]
+            selectedSong = filteredSongs[currentSongIndex]
             val success = playSong(context, exoPlayer, selectedSong!!)
             if (!success) {
                 showMessage = "فشل تشغيل ${selectedSong!!.title}"
@@ -176,6 +144,59 @@ fun MusicPlayerScreen() {
                     showMessage = null
                 }
             }
+        }
+    }
+
+    // متابعة تغييرات الـ filteredSongs لتحديث currentSongIndex و selectedSong
+    LaunchedEffect(filteredSongs) {
+        if (selectedSong != null) {
+            // ابحث عن الأغنية الحالية في الـ filteredSongs الجديدة
+            val newIndex = filteredSongs.indexOfFirst { it == selectedSong }
+            if (newIndex != -1) {
+                // لو الأغنية لسه موجودة في الـ filteredSongs، حدث الـ currentSongIndex
+                currentSongIndex = newIndex
+            } else {
+                // لو الأغنية مش موجودة (مثلًا لأنها اتشالت من المفضلة وإحنا في وضع المفضلة)، وقف التشغيل
+                exoPlayer.pause()
+                selectedSong = null
+                currentSongIndex = -1
+            }
+        }
+    }
+
+    // إضافة Listener للـ ExoPlayer عشان يشغل السورة اللي بعدها لما الحالية تخلّص
+    LaunchedEffect(exoPlayer) {
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    if (isShuffleModeOn) {
+                        // لو الـ Shuffle مفعّل، نختار سورة عشوائية
+                        shuffleSongs()
+                    } else {
+                        // لو الـ Shuffle مش مفعّل، نشغل السورة اللي بعدها
+                        playNextSong()
+                    }
+                }
+            }
+        })
+    }
+
+    // Drawer State
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+    // ربط isRepeatModeOn بالـ ExoPlayer
+    LaunchedEffect(isRepeatModeOn) {
+        exoPlayer.repeatMode = if (isRepeatModeOn) {
+            Player.REPEAT_MODE_ONE
+        } else {
+            Player.REPEAT_MODE_OFF
+        }
+    }
+
+    DisposableEffect(exoPlayer) {
+        onDispose {
+            exoPlayer.stop()
+            exoPlayer.release()
         }
     }
 
@@ -281,7 +302,6 @@ fun MusicPlayerScreen() {
                                                     isSearchActive = true
                                                 }
                                         )
-
                                     }
                                 }
                             },
@@ -305,7 +325,7 @@ fun MusicPlayerScreen() {
                         Surface(
                             color = Color(0xFF404a56),
                             modifier = Modifier
-                                .height(220.dp)
+                                .height(150.dp)
                                 .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
                         ) {
                             Column(
@@ -319,46 +339,14 @@ fun MusicPlayerScreen() {
                                         R.string.choose_soura
                                     ),
                                     color = Color.White,
-                                    fontSize = 16.sp,
+                                    fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(top = 5.dp)
                                 )
 
                                 Spacer(Modifier.height(8.dp))
 
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(48.dp)
-                                        .padding(horizontal = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Favorite,
-                                        contentDescription = "Like Icon",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(30.dp)
-                                    )
-                                    Spacer(Modifier.width(20.dp))
-                                    Button(
-                                        modifier = Modifier
-                                            .width(350.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Green),
 
-                                        onClick = {  },
-                                    ) {
-                                        Text(
-                                            text = stringResource(R.string.klmat_elsour),
-                                            color = Color.Black,
-                                            fontSize = 20.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-
-                                }
-
-                                Spacer(Modifier.height(8.dp))
 
                                 var currentPosition by remember { mutableStateOf(0L) }
                                 var duration by remember { mutableStateOf(0L) }
@@ -428,26 +416,33 @@ fun MusicPlayerScreen() {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 8.dp),
+                                        .padding(start = 10.dp, end = 10.dp , bottom = 16.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    IconButton(onClick = { shuffleSongs() }) {
+                                    IconButton(onClick = {
+                                        isShuffleModeOn = !isShuffleModeOn
+                                        if (isShuffleModeOn) {
+                                            shuffleSongs()
+                                            Toast.makeText(context, "تم تفعيل الاختيار العشوائي", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "تم إلغاء الاختيار العشوائي", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }) {
                                         Icon(
                                             imageVector = Icons.Filled.Shuffle,
                                             contentDescription = "Shuffle",
-                                            tint = Color.White,
+                                            tint = if (isShuffleModeOn) Green else Color.White,
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
-                                    IconButton(onClick = { playNextSong() }) {
+                                    IconButton(onClick = { playPreviousSong() }) {
                                         Icon(
-                                            imageVector = Icons.Filled.SkipNext,
-                                            contentDescription = "Next",
+                                            imageVector = Icons.Filled.SkipPrevious,
+                                            contentDescription = "Previous",
                                             tint = Color.White,
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
-
                                     IconButton(
                                         onClick = {
                                             if (selectedSong != null) {
@@ -470,23 +465,20 @@ fun MusicPlayerScreen() {
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
-                                    IconButton(onClick = { playPreviousSong() }) {
+                                    IconButton(onClick = { playNextSong() }) {
                                         Icon(
-                                            imageVector = Icons.Filled.SkipPrevious,
-                                            contentDescription = "Previous",
+                                            imageVector = Icons.Filled.SkipNext,
+                                            contentDescription = "Next",
                                             tint = Color.White,
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
                                     IconButton(onClick = {
                                         isRepeatModeOn = !isRepeatModeOn
-                                        if (isRepeatModeOn)
-                                        {
-                                            Toast.makeText(context, "تم  وضع التكرار", Toast.LENGTH_SHORT).show()
-
-                                        }
-                                        else{
-                                           Toast.makeText(context, "تم إلغاء وضع التكرار", Toast.LENGTH_SHORT).show()
+                                        if (isRepeatModeOn) {
+                                            Toast.makeText(context, "تم وضع التكرار", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "تم إلغاء وضع التكرار", Toast.LENGTH_SHORT).show()
                                         }
                                         scope.launch {
                                             delay(2000L)
