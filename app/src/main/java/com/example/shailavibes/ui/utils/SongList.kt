@@ -56,11 +56,10 @@ fun SongList(
             modifier = modifier
                 .fillMaxSize()
                 .padding(8.dp)
-
         ) {
             itemsIndexed(
                 items = songs,
-                key = { index, song -> "${song.title}-${song.isFavorite}" }
+                key = { index, song -> "${song.title}-${song.isFavorite}-${index}" } // تحسين الـ key عشان يتغير لما isFavorite يتغير
             ) { _, song ->
                 SongItem(
                     song = song,
@@ -79,7 +78,7 @@ fun SongItem(
     onFavoriteToggle: () -> Unit
 ) {
     var isFavorite by remember(song) { mutableStateOf(song.isFavorite) }
-    var isPlay by remember{ mutableStateOf(false) }
+    var isPlay by remember { mutableStateOf(false) }
 
     LaunchedEffect(song.isFavorite) {
         isFavorite = song.isFavorite
@@ -96,19 +95,19 @@ fun SongItem(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         IconButton(onClick = {
-            isPlay=!isPlay
+            isPlay = !isPlay
             if (isPlay) {
                 onSongClick()
             }
         }) {
             Icon(
-                imageVector =if (isPlay) Icons.Default.Pause else Icons.Default.PlayCircle,
+                imageVector = if (isPlay) Icons.Default.Pause else Icons.Default.PlayCircle,
                 contentDescription = "Play",
                 tint = Color(0xFF3B3C3D),
                 modifier = Modifier.size(24.dp)
             )
         }
-        Column() {
+        Column {
             Text(
                 text = song.title,
                 color = Color.White,
