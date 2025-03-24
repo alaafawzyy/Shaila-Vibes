@@ -68,10 +68,9 @@ fun MusicPlayerScreen() {
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
     var showFavoritesOnly by remember { mutableStateOf(false) }
-    var favoritesUpdateTrigger by remember { mutableStateOf(0) } // متغير جديد لإجبار تحديث filteredSongs
+    var favoritesUpdateTrigger by remember { mutableStateOf(0) }
 
     val filteredSongs by derivedStateOf {
-        // استخدام favoritesUpdateTrigger عشان نجبر الـ derivedStateOf على إعادة الحساب
         favoritesUpdateTrigger
         if (showFavoritesOnly) {
             songs.filter { it.isFavorite }
@@ -86,11 +85,18 @@ fun MusicPlayerScreen() {
     }
 
     // دالة لحفظ الأغاني المفضلة في SharedPreferences
-    fun saveFavorites() {
+    fun saveFavorites(song: Song) {
         val favoriteIds = songs.filter { it.isFavorite }.map { it.resourceId.toString() }.toSet()
         sharedPreferences.edit().putStringSet("favorite_songs", favoriteIds).apply()
-        // تغيير قيمة favoritesUpdateTrigger عشان يجبر الـ filteredSongs على التحديث
         favoritesUpdateTrigger++
+        // إظهار Toast لما السورة تتضاف للمفضلة
+        if (song.isFavorite) {
+            Toast.makeText(context, "تم إضافة ${song.title} إلى المفضلة", Toast.LENGTH_SHORT).show()
+        }
+        // إظهار Toast لما السورة تم إزالة من المفضلة
+        else {
+            Toast.makeText(context, "تم إزالة ${song.title} من المفضلة", Toast.LENGTH_SHORT).show()
+        }
     }
 
     fun playNextSong() {
@@ -150,30 +156,30 @@ fun MusicPlayerScreen() {
     // متابعة تغييرات الـ filteredSongs لتحديث currentSongIndex و selectedSong
     LaunchedEffect(filteredSongs) {
         if (selectedSong != null) {
-            // ابحث عن الأغنية الحالية في الـ filteredSongs الجديدة
             val newIndex = filteredSongs.indexOfFirst { it == selectedSong }
             if (newIndex != -1) {
-                // لو الأغنية لسه موجودة في الـ filteredSongs، حدث الـ currentSongIndex
                 currentSongIndex = newIndex
             } else {
-                // لو الأغنية مش موجودة (مثلًا لأنها اتشالت من المفضلة وإحنا في وضع المفضلة)، وقف التشغيل
-                exoPlayer.pause()
-                selectedSong = null
-                currentSongIndex = -1
+                // إلغاء التوقيف عند السيرش، خلي السورة شغالة
+                // بدل ما نقف التشغيل، نسيب السورة شغالة ونحدث الـ currentSongIndex و selectedSong
+                if (!isSearchActive) {
+                    // لو مش في وضع السيرش، وقف التشغيل (زي المفضلة)
+                    exoPlayer.pause()
+                    selectedSong = null
+                    currentSongIndex = -1
+                }
             }
         }
     }
 
-    // إضافة Listener للـ ExoPlayer عشان يشغل السورة اللي بعدها لما الحالية تخلّص
+
     LaunchedEffect(exoPlayer) {
         exoPlayer.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     if (isShuffleModeOn) {
-                        // لو الـ Shuffle مفعّل، نختار سورة عشوائية
                         shuffleSongs()
                     } else {
-                        // لو الـ Shuffle مش مفعّل، نشغل السورة اللي بعدها
                         playNextSong()
                     }
                 }
@@ -181,10 +187,10 @@ fun MusicPlayerScreen() {
         })
     }
 
-    // Drawer State
+
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-    // ربط isRepeatModeOn بالـ ExoPlayer
+
     LaunchedEffect(isRepeatModeOn) {
         exoPlayer.repeatMode = if (isRepeatModeOn) {
             Player.REPEAT_MODE_ONE
@@ -346,8 +352,6 @@ fun MusicPlayerScreen() {
 
                                 Spacer(Modifier.height(8.dp))
 
-
-
                                 var currentPosition by remember { mutableStateOf(0L) }
                                 var duration by remember { mutableStateOf(0L) }
                                 var isSeeking by remember { mutableStateOf(false) }
@@ -416,13 +420,13 @@ fun MusicPlayerScreen() {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(start = 10.dp, end = 10.dp , bottom = 16.dp),
+                                        .padding(start = 10.dp, end = 10.dp, bottom = 16.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     IconButton(onClick = {
                                         isShuffleModeOn = !isShuffleModeOn
                                         if (isShuffleModeOn) {
-                                            shuffleSongs()
+
                                             Toast.makeText(context, "تم تفعيل الاختيار العشوائي", Toast.LENGTH_SHORT).show()
                                         } else {
                                             Toast.makeText(context, "تم إلغاء الاختيار العشوائي", Toast.LENGTH_SHORT).show()
@@ -524,7 +528,7 @@ fun MusicPlayerScreen() {
                             },
                             onFavoriteToggle = { song ->
                                 song.isFavorite = !song.isFavorite
-                                saveFavorites()
+                                saveFavorites(song)
                             },
                             modifier = Modifier
                                 .fillMaxSize()

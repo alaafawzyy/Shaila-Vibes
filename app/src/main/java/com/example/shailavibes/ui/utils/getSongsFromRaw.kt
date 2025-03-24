@@ -13,6 +13,8 @@ fun getSongsFromRaw(context: Context): List<Song> {
             val fileName = field.name
             val resourceId = field.getInt(null)
             val formattedTitle = fileName
+                .replace(Regex("^\\d{2}_"), "")
+                .replace(Regex("_\\d+"), "")
                 .replace("_", " ")
                 .split(" ")
                 .joinToString(" ") { word ->
@@ -30,5 +32,6 @@ fun getSongsFromRaw(context: Context): List<Song> {
     } catch (e: Exception) {
         println("Error loading raw files: ${e.message}")
     }
-    return rawFiles.sortedBy { it.title }
+    return rawFiles
+   // return rawFiles.sortedBy { it.title }
 }
