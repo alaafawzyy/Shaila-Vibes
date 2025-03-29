@@ -6,20 +6,24 @@ import com.example.shailavibes.ui.data.Song
 
 fun getSongsFromRaw(context: Context): List<Song> {
     val rawFiles = mutableListOf<Song>()
+
+
+    val arabicNames = mapOf(
+    "aa" to "عاديات",
+      "aj" to "بلد"
+    )
+
     try {
         val fields = R.raw::class.java.fields
 
         for (field in fields) {
             val fileName = field.name
             val resourceId = field.getInt(null)
-            val formattedTitle = fileName
-                .replace(Regex("^\\d{2}_"), "")
-                .replace(Regex("_\\d+"), "")
-                .replace("_", " ")
-                .split(" ")
-                .joinToString(" ") { word ->
-                    word.replaceFirstChar { if (it.isLowerCase()) it.uppercase() else it.toString() }
-                }
+
+            val cleanFileName = fileName.replace(Regex("^\\d{2}_"), "")
+
+
+            val formattedTitle = arabicNames[cleanFileName] ?: cleanFileName
 
             val song = Song(
                 title = formattedTitle,
@@ -33,5 +37,4 @@ fun getSongsFromRaw(context: Context): List<Song> {
         println("Error loading raw files: ${e.message}")
     }
     return rawFiles
-   // return rawFiles.sortedBy { it.title }
 }

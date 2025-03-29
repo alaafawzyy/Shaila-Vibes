@@ -7,4 +7,10 @@
     <string name="appbar_title">القرآن الكريم</string>
     <string name="choose_soura">قم باختيار سورة</string>
     <string name="klmat_elsour">كلمات السور</string>
+    <string name="Interstitial_id">ca-app-pub-3940256099942544/1033173712</string>
+    <string name="open_id">ca-app-pub-3940256099942544/9257395921</string>
+    <string name="device_id">2C035CB581762CA271F2C5E1A734FB3B</string>
+    <string name="banner_id">ca-app-pub-3940256099942544/9214589741</string>
+
+
 </resources>
